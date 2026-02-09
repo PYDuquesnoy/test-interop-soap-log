@@ -1,0 +1,14 @@
+services:
+  iris:
+    image: containers.intersystems.com/intersystems/irishealth-community:latest-cd
+    container_name: iris4h-community
+    command:
+      - --after
+      - iris session iris -U%SYS '##class(Security.Users).UnExpireUserPasswords("*")'
+    ports:
+      - "30002:52773"  # Web Server / Management Portal
+    volumes:
+      - ./src:/src
+    environment:
+      - IRIS_PASSWORD=SYS
+    restart: unless-stopped
