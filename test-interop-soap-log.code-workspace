@@ -4,5 +4,26 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"intersystems.servers": {
+			"iris4h-community": {
+				"webServer": {
+					"scheme": "http",
+					"host": "localhost",
+					"port": 30002
+				},
+				"username": "_SYSTEM"
+			}
+		},
+		"objectscript.conn": {
+			"active": true,
+			"server": "iris4h-community",
+			"ns": "USER",
+			"links": {
+				"SOAP Wizard": "${serverUrl}/isc/studio/templates/%25ZEN.Template.AddInWizard.SOAPWizard.cls?Namespace=${namespace}${serverAuth}",
+				"XML Schema Wizard": "${serverUrl}/isc/studio/templates/%25ZEN.Template.AddInWizard.XMLSchemaWizard.cls?Namespace=${namespace}${serverAuth}",
+				"XSL Transform Wizard": "${serverUrl}/isc/studio/templates/%25ZEN.Template.AddInWizard.XSLTransformWizard.cls?Namespace=${namespace}${serverAuth}"
+			}
+		}
+	}
 }
