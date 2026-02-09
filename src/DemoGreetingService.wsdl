@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:tns="http://test.demo.org"
+             xmlns:s="http://www.w3.org/2001/XMLSchema"
+             targetNamespace="http://test.demo.org"
+             name="DemoGreetingService">
+
+    <types>
+        <s:schema elementFormDefault="qualified" targetNamespace="http://test.demo.org">
+
+            <s:complexType name="GreetingRequest">
+                <s:sequence>
+                    <s:element name="FirstName" type="s:string"/>
+                    <s:element name="LastName" type="s:string"/>
+                </s:sequence>
+            </s:complexType>
+
+            <s:complexType name="GreetingResponse">
+                <s:sequence>
+                    <s:element name="Greeting" type="s:string"/>
+                </s:sequence>
+            </s:complexType>
+
+            <s:element name="Greet">
+                <s:complexType>
+                    <s:sequence>
+                        <s:element name="request" type="tns:GreetingRequest"/>
+                    </s:sequence>
+                </s:complexType>
+            </s:element>
+
+            <s:element name="GreetResponse">
+                <s:complexType>
+                    <s:sequence>
+                        <s:element name="GreetResult" type="tns:GreetingResponse"/>
+                    </s:sequence>
+                </s:complexType>
+            </s:element>
+
+        </s:schema>
+    </types>
+
+    <message name="GreetSoapIn">
+        <part name="parameters" element="tns:Greet"/>
+    </message>
+
+    <message name="GreetSoapOut">
+        <part name="parameters" element="tns:GreetResponse"/>
+    </message>
+
+    <portType name="DemoGreetingServiceSoap">
+        <operation name="Greet">
+            <input message="tns:GreetSoapIn"/>
+            <output message="tns:GreetSoapOut"/>
+        </operation>
+    </portType>
+
+    <binding name="DemoGreetingServiceSoapBinding" type="tns:DemoGreetingServiceSoap">
+        <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+        <operation name="Greet">
+            <soap:operation soapAction="http://test.demo.org/Greet" style="document"/>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+    </binding>
+
+    <service name="DemoGreetingService">
+        <port name="DemoGreetingServiceSoap" binding="tns:DemoGreetingServiceSoapBinding">
+            <soap:address location="http://localhost/DemoGreetingService"/>
+        </port>
+    </service>
+
+</definitions>

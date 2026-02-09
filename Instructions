@@ -1,0 +1,147 @@
+# SOAP Request/Response Logging
+
+## Overview
+
+This project implements per-client SOAP request/response logging that can be
+enabled and configured from the IRIS Management Portal, without relying on the
+global ^ISCSOAP logging infrastructure.
+
+Logging uses the %SOAP.WebClient hook methods (%OnSOAPRequest / %OnSOAPResponse)
+to capture SOAP envelopes and metadata, writing them to a configurable file.
+
+
+## Architecture
+
+```
+  +--------------------------------------------------+
+  |         IRIS Management Portal                    |
+  |         Production Configuration                  |
+  |                                                   |
+  |   Settings (SOAPLog category):                    |
+  |     SOAPLogEnabled = 1                            |
+  |     SOAPLogFile    = /tmp/DemoGreeting.log        |
+  +-------------------------+------------------------+
+                            |
+                    OnInit() propagates
+                   to process-private vars
+                   %SOAPLogEnabled, %SOAPLogFile
+                            |
+                            v
+  +--------------------------------------------------+
+  |   Interop.SOAPLoggingOperation                    |
+  |   (Extends Ens.BusinessOperation)                 |
+  |                                                   |
+  |   - SETTINGS: SOAPLogEnabled, SOAPLogFile         |
+  |   - OnInit(): sets process-private variables      |
+  +-------------------------+------------------------+
+                            |
+                     Extends (superclass)
+                            |
+                            v
+  +--------------------------------------------------+
+  |   Interop.Client.BO.DemoGreetingServiceSoap       |
+  |   (Extends Interop.SOAPLoggingOperation)          |
+  |                                                   |
+  |   - Business Operation (no logging code here)     |
+  |   - Uses EnsLib.SOAP.OutboundAdapter              |
+  |   - Calls Adapter.InvokeMethod("Greet", ...)      |
+  +-------------------------+------------------------+
+                            |
+                    Adapter creates/uses
+                    the SOAP client instance
+                            |
+                            v
+  +--------------------------------------------------+
+  |   Interop.Client.DemoGreetingServiceSoap          |
+  |   (Extends Interop.Client.SOAPLogger,             |
+  |            %SOAP.WebClient)                       |
+  |                                                   |
+  |   - Generated SOAP proxy client                   |
+  |   - Logging hooks inherited from SOAPLogger       |
+  +-------------------------+------------------------+
+                            |
+                    %OnSOAPRequest /
+                    %OnSOAPResponse hooks
+                    read %SOAPLogEnabled
+                    and %SOAPLogFile
+                            |
+                            v
+  +--------------------------------------------------+
+  |   Interop.Client.SOAPLogger                       |
+  |   (Extends %RegisteredObject) -- Mixin            |
+  |                                                   |
+  |   - %OnSOAPRequest: logs request XML + metadata   |
+  |   - %OnSOAPResponse: logs response XML + duration |
+  |   - WriteSOAPLog: appends to file                 |
+  +-------------------------+------------------------+
+                            |
+                            v
+  +--------------------------------------------------+
+  |   Log File on Disk                                |
+  |   (e.g. /tmp/DemoGreeting.log)                    |
+  |                                                   |
+  |   === SOAP Request === [timestamp]                |
+  |       Method: Greet | Action: .../Greet           |
+  |   <soap:Envelope>...</soap:Envelope>              |
+  |   === SOAP Response === [timestamp]               |
+  |       Status: OK | Duration: 0.042s               |
+  |   <soap:Envelope>...</soap:Envelope>              |
+  |   =====================================           |
+  +--------------------------------------------------+
+```
+
+
+## Key Design Decisions
+
+### Process-Private Variables
+Communication between the Business Operation (settings) and the SOAP client
+(hooks) uses process-private variables (%SOAPLogEnabled, %SOAPLogFile).
+Each Ensemble BO job runs in its own process, so these are safe and isolated.
+This avoids editing method code in every BO method.
+
+### Mixin Pattern
+The SOAPLogger is a mixin class that can be added to any %SOAP.WebClient
+subclass via multiple inheritance. It overrides the hook methods from
+%SOAP.WebClient without requiring changes to the proxy client's method code.
+
+### Minimal BO Changes
+Adding logging to a Business Operation requires only changing the Extends clause.
+No properties, SETTINGS, or method code changes are needed in the BO itself.
+
+
+## How to Enable Logging
+
+1. Open the IRIS Management Portal
+2. Navigate to Interoperability > Configure > Production
+3. Select the Business Operation (e.g., BO.DemoGreetingServiceSoap)
+4. In the Settings panel, find the "SOAPLog" category
+5. Set SOAPLogEnabled = 1
+6. Set SOAPLogFile to the desired path (e.g., /tmp/DemoGreeting.log)
+7. Apply / Restart the Business Operation item
+
+
+## How to Add Logging to Another SOAP Client
+
+Two changes are required:
+
+1. **SOAP Client class** - Add SOAPLogger to the Extends list:
+   ```
+   Class My.Client.SoapProxy Extends (Interop.Client.SOAPLogger, %SOAP.WebClient)
+   ```
+
+2. **Business Operation class** - Change superclass:
+   ```
+   Class My.Client.BO.MyOperation Extends Interop.SOAPLoggingOperation
+   ```
+
+No further code changes are needed.
+
+
+## Files
+
+| File                                              | Role                                    |
+|---------------------------------------------------|-----------------------------------------|
+| Interop/SOAPLoggingOperation.cls                  | BO superclass (SETTINGS + OnInit)       |
+| Interop/Client/SOAPLogger.cls                     | SOAP client mixin (hooks + file writer) |
+| Interop/Client/DemoGreetingServiceSoap.cls        | SOAP proxy client (extends SOAPLogger)  |
+| Interop/Client/BO/DemoGreetingServiceSoap.cls     | Business Operation (extends superclass) |
